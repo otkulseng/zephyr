@@ -69,6 +69,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define LWM2M_DP_CLIENT_URI "dp"
 /* Resources */
 
+static K_MUTEX_DEFINE(msg_lock);
 /* Shared set of in-flight LwM2M messages */
 static struct lwm2m_message messages[CONFIG_LWM2M_ENGINE_MAX_MESSAGES];
 
@@ -187,11 +188,13 @@ int lwm2m_engine_context_close(struct lwm2m_ctx *client_ctx)
 		remove_observer_from_list(client_ctx, NULL, obs);
 	}
 
+	k_mutex_lock(&msg_lock, K_FOREVER);
 	for (i = 0, msg = messages; i < ARRAY_SIZE(messages); i++, msg++) {
 		if (msg->ctx == client_ctx) {
 			lwm2m_reset_message(msg, true);
 		}
 	}
+	k_mutex_unlock(&msg_lock);
 
 	coap_pendings_clear(client_ctx->pendings, ARRAY_SIZE(client_ctx->pendings));
 	coap_replies_clear(client_ctx->replies, ARRAY_SIZE(client_ctx->replies));
